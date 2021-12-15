@@ -8,7 +8,7 @@ class Node(object):
         self.neighbors = neighbors
 
 
-def neighbors_for(x: int, y: int, max_x: int, max_y: int) -> List[Tuple[int]]:
+def neighbors_for(x: int, y: int, max_x: int, max_y: int) -> List[Tuple[int, int]]:
     neighbors = []
     if x > 0:
         neighbors.append((x - 1, y))
@@ -32,9 +32,9 @@ def parse_input(lines: List[str]) -> Tuple[Dict[Tuple, Node], int, int]:
     return graph, max_x, max_y
 
 
-def djikstra(graph, start, end):
+def dijkstra(graph: Dict[Tuple[int, int], Node], start: Tuple[int, int], end: Tuple[int, int]) -> int:
     unvisited_set = set(graph.keys())
-    distances = {key: math.inf for key in graph.keys()}
+    distances = {}
     curr_node = start
     distances[curr_node] = 0
     end_node_not_visited = True
@@ -42,15 +42,44 @@ def djikstra(graph, start, end):
         for neighbor in graph[curr_node].neighbors:
             if neighbor in unvisited_set:
                 tentative_new_dist = distances[curr_node] + graph[neighbor].risk
-                if tentative_new_dist < distances[neighbor]:
+                if neighbor not in distances or tentative_new_dist < distances[neighbor]:
                     distances[neighbor] = tentative_new_dist
         unvisited_set.remove(curr_node)
         if end not in unvisited_set:
             end_node_not_visited = False
         else:
-            curr_node = min(unvisited_set, key=lambda x: distances[x])
+            curr_node = min(filter(lambda key: key in unvisited_set, distances), key=lambda x: distances[x])
 
     return distances[end]
+
+
+def a_star(graph: Dict[Tuple[int, int], Node], start: Tuple[int, int], end: Tuple[int, int]) -> int:
+    # Reproduced from wikipedia's pseudocode
+    h = lambda x: (end[0] - x[0]) + (end[1] - x[1])  # Heuristic is Manhattan's distance to the end node
+
+    open_set = {start}
+    came_from = {}
+
+    g_score = {key: math.inf for key in graph.keys()}
+    g_score[start] = 0
+
+    f_score = {key: math.inf for key in graph.keys()}
+    f_score[start] = h(start)
+
+    while len(open_set) > 0:
+        curr_node = min(open_set, key=lambda x: f_score[x])
+        if curr_node == end:
+            return f_score[end]
+        else:
+            open_set.remove(curr_node)
+            for neighbor in graph[curr_node].neighbors:
+                tentative_g_score = g_score[curr_node] + graph[neighbor].risk
+                if tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = curr_node
+                    g_score[neighbor] = tentative_g_score
+                    f_score[neighbor] = tentative_g_score + h(neighbor)
+                    if neighbor not in open_set:
+                        open_set.add(neighbor)
 
 
 def assemble_tiles(tiles):
@@ -58,8 +87,7 @@ def assemble_tiles(tiles):
     for j_tile in range(len(tiles)):
         for i_line in range(len(tiles[j_tile][0])):
             for i_tile in range(len(tiles[j_tile])):
-                lines[len(tiles[j_tile][i_tile])*j_tile + i_line] += tiles[j_tile][i_tile][i_line]
-            print(lines[len(tiles)*j_tile + i_line])
+                lines[len(tiles[j_tile][i_tile]) * j_tile + i_line] += tiles[j_tile][i_tile][i_line]
     return lines
 
 
@@ -80,20 +108,19 @@ def tile_input(input_lines: List[str]) -> List[str]:
 
 def pretty_print_map(lines):
     for line in lines:
-        print(line)
+        print("".join([str(char) for char in line]))
 
 
 def main():
     with open('input', 'r') as fd:
         lines = tile_input(fd.readlines())
-        pretty_print_map(lines)
         print("input has size", len(lines), len(lines[0]))
         graph, max_x, max_y = parse_input(lines)
-        print("max_x, max_y", max_x, max_y)
         start = (0, 0)
         end = (max_x, max_y)
-        shortest_path = djikstra(graph, start, end)
-        print(shortest_path)
+        # shortest_path = ijkstra(graph, start, end) # Too slow :'(
+        shortest_path = a_star(graph, start, end)
+        print("The path of least risk through the cave has a total risk of:", shortest_path)
 
 
 if __name__ == "__main__":
