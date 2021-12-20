@@ -22,24 +22,31 @@ def pretty_print_image(image: np.ndarray):
     print("~~~~~~~~~~~~~~~~~~~~")
 
 
+def enhance_n_times(image, iea, n_steps):
+    padded_img = image.copy()
+    for i in range(n_steps):
+        if i % 2 == 0:
+            padded_img = np.pad(padded_img, 4, constant_values=0).astype(np.int8)
+        padded_img = enhance(padded_img, iea)[1:-1, 1:-1]
+    return padded_img
+
+
 def main():
     with open("input", 'r') as fd:
         lines = fd.readlines()
         iea = [1 if char == '#' else 0 for char in lines[0].strip()]
         image_input = [list(line.strip()) for line in lines[2:]]
 
-        padded_img = np.array(image_input)
+        image = np.array(image_input)
 
-        padded_img[padded_img == '.'] = 0
-        padded_img[padded_img == '#'] = 1
+        image[image == '.'] = 0
+        image[image == '#'] = 1
 
-        padded_img = np.pad(padded_img, 4, constant_values=0).astype(np.int8)
+        n_steps = 50
+        enhanced_image = enhance_n_times(image, iea, n_steps)
 
-        padded_img = enhance(padded_img, iea)[1:-1, 1:-1]
-        padded_img = enhance(padded_img, iea)[1:-1, 1:-1]
-
-        pretty_print_image(padded_img)
-        print("non-zero elems:", np.count_nonzero(padded_img))
+        pretty_print_image(enhanced_image)
+        print("non-zero elems:", np.count_nonzero(enhanced_image))
 
 
 if __name__ == "__main__":
