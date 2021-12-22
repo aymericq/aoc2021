@@ -1,9 +1,10 @@
 class Packet:
-    def __init__(self, version, type_id, length, subpackets=None):
+    def __init__(self, version, type_id, length, subpackets=None, value=None):
         self.version = version
         self.type_id = type_id
         self.length = length
         self.subpackets = subpackets
+        self.value = value
 
 
 def pad_bin(bin_str):
@@ -20,14 +21,26 @@ def add_version_number(packet):
         return packet.version
 
 
-def main():
-    with open('input', 'r') as fd:
-        binary_input = "".join([pad_bin(bin(int(char, base=16))[2:]) for char in fd.readline().strip()])
-        print(binary_input)
-        packet = parse_packet(binary_input)
-        s = 0
-        s += add_version_number(packet)
-        print("Sum of versions is:", s)
+def evaluate(packet: Packet) -> float:
+    if packet.type_id == 0:
+        return sum(evaluate(subpacket) for subpacket in packet.subpackets)
+    if packet.type_id == 1:
+        acc = 1
+        for subpacket in packet.subpackets:
+            acc *= evaluate(subpacket)
+        return acc
+    if packet.type_id == 2:
+        return min(evaluate(subpacket) for subpacket in packet.subpackets)
+    if packet.type_id == 3:
+        return max(evaluate(subpacket) for subpacket in packet.subpackets)
+    if packet.type_id == 4:
+        return packet.value
+    if packet.type_id == 5:
+        return 1 if evaluate(packet.subpackets[0]) > evaluate(packet.subpackets[1]) else 0
+    if packet.type_id == 6:
+        return 1 if evaluate(packet.subpackets[0]) < evaluate(packet.subpackets[1]) else 0
+    if packet.type_id == 7:
+        return 1 if evaluate(packet.subpackets[0]) == evaluate(packet.subpackets[1]) else 0
 
 
 def parse_packet(binary_input):
@@ -87,8 +100,21 @@ def parse_litteral_packet(binary_input, type_id, version) -> Packet:
     literal += curr_group[1:]
     cursor += 5
     print("Literal bin val is:", literal)
+    value = int(literal, base=2)
     print("Literal val is:", int(literal, base=2))
-    return Packet(version, type_id, cursor)
+    return Packet(version, type_id, cursor, value=value)
+
+
+def main():
+    with open('input', 'r') as fd:
+        binary_input = "".join([pad_bin(bin(int(char, base=16))[2:]) for char in fd.readline().strip()])
+        print(binary_input)
+        packet = parse_packet(binary_input)
+        s = 0
+        s += add_version_number(packet)
+        print("Sum of versions is:", s)
+        value = evaluate(packet)
+        print("Packet evaluates to:", value)
 
 
 if __name__ == "__main__":
