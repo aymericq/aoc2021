@@ -1,3 +1,4 @@
 input
 test_input*
 .idea
+**/*.pyc
