@@ -6,12 +6,18 @@ def main():
     for i in range(1, len(lines)):
         dm1 = arr2depthmap(eval(lines[i]))
         dm = add(dm, dm1)
-    print(dm)
     t = depthmap2btree(dm)
-    s = pretty_print_t(t)
-    # print(s)
     m = magnitude(t)
     print("Magnitude:", m)
+    magnitudes = []
+    for i in range(len(lines)):
+        for j in range(len(lines)):
+            if i != j:
+                dm1 = arr2depthmap(eval(lines[i]))
+                dm2 = arr2depthmap(eval(lines[j]))
+                dm = add(dm1, dm2)
+                magnitudes.append(magnitude(depthmap2btree(dm)))
+    print("Max :", max(magnitudes))
 
 
 def magnitude(t):
@@ -77,12 +83,6 @@ def find_next_free_node_at_depth_d(t, d):
     if d == 0:
         if t['val'] is None and not t['children_full']:
             return t
-        # elif t['l']['val'] is None:
-        #     notify_parent(t['r'])
-        #     return t['l']
-        # elif t['r']['val'] is None:
-        #     notify_parent(t['r'])
-        #     return t['r']
         else:
             return None
     else:
@@ -106,7 +106,6 @@ def depthmap2btree(dm):
         node['val'] = dm[i]['val']
         node['children_full'] = True
         notify_parent(node)
-        print_tree(t)
     return t
 
 
@@ -171,8 +170,6 @@ def add(dm1, dm2) -> list:
     for e in dm:
         e['d'] += 1
     dm = reduce(dm)
-    t = depthmap2btree(dm)
-    print_tree(t)
     return dm
 
 
