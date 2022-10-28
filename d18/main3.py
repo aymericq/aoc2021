@@ -3,14 +3,21 @@ def main():
         lines = [line.strip() for line in fd.readlines()]
     arr0 = eval(lines[0])
     dm = arr2depthmap(arr0)
-    for i in range(len(lines)):
+    for i in range(1, len(lines)):
         dm1 = arr2depthmap(eval(lines[i]))
         dm = add(dm, dm1)
     print(dm)
     t = depthmap2btree(dm)
-    print_tree(t)
     s = pretty_print_t(t)
-    print(s)
+    # print(s)
+    m = magnitude(t)
+    print("Magnitude:", m)
+
+
+def magnitude(t):
+    if t['val'] is not None:
+        return t['val']
+    return 3*magnitude(t['l']) + 2*magnitude(t['r'])
 
 
 def arr2depthmap(a):
@@ -65,29 +72,28 @@ def notify_parent(node):
 
 
 def find_next_free_node_at_depth_d(t, d):
-    print(d)
-    if d == 1:
-        if t['val'] is not None:
-            return None
-        elif t['l']['val'] is None:
-            notify_parent(t['r'])
-            return t['l']
-        elif t['r']['val'] is None:
-            notify_parent(t['r'])
-            return t['r']
+    if t['children_full']:
+        return None
+    if d == 0:
+        if t['val'] is None and not t['children_full']:
+            return t
+        # elif t['l']['val'] is None:
+        #     notify_parent(t['r'])
+        #     return t['l']
+        # elif t['r']['val'] is None:
+        #     notify_parent(t['r'])
+        #     return t['r']
         else:
             return None
     else:
         node = find_next_free_node_at_depth_d(t['l'], d - 1)
-        if node is None or node['children_full']:
-            print("r")
+        if node is None:
             node = find_next_free_node_at_depth_d(t['r'], d - 1)
-            if node is None or node['children_full']:
+            if node is None:
                 return None
             else:
                 return node
         else:
-            print("l")
             return node
 
 
@@ -165,6 +171,8 @@ def add(dm1, dm2) -> list:
     for e in dm:
         e['d'] += 1
     dm = reduce(dm)
+    t = depthmap2btree(dm)
+    print_tree(t)
     return dm
 
 
