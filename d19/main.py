@@ -26,6 +26,7 @@ def find_match(beacons1, beacons2, T, R):
 
 
 def connected_to_0(j, connections):
+    # Dijkstra from Wikipedia
     dist = {}
     prev = {}
     for vertex in connections:
@@ -48,22 +49,30 @@ def connected_to_0(j, connections):
     return prev
 
 
-def connect(i, j, connections, transf):
+def connect(i, j, connections, transf, args):
     if j not in connections:
-        connections[j] = [{'p': i, 'transf': transf}]
+        connections[j] = [{'p': i, 'transf': transf, 'args': args}]
     else:
-        connections[j].append({'p': i, 'transf': transf})
+        connections[j].append({'p': i, 'transf': transf, 'args': args})
 
 
 def transform_beacon_coords(i, beacons_i, connections):
+    path = connected_to_0(i, connections)
     pos_in_graph = i
     transformed_beacons_i = beacons_i.copy()
-    while pos_in_graph in connections:
-        transformation, rotation, relative_pos = connections[pos_in_graph]['transf']
-        transformed_beacons_i = transformation @ rotation @ transformed_beacons_i + relative_pos
-        if 'p' in connections[pos_in_graph]:
-            pos_in_graph = connections[pos_in_graph]['p']
+    while pos_in_graph != 0:
+        p = [v for v in path if path[v] == pos_in_graph][0]
+        connection = [conn for conn in connections[pos_in_graph] if conn['p'] == p][0]
+        transf, (t, r, rp) = connection['transf'], connection['args']
+        transformed_beacons_i = transf(t, r, rp, transformed_beacons_i)
+        pos_in_graph = p
     return transformed_beacons_i
+
+    #     transformation, rotation, relative_pos = connections[pos_in_graph]['transf']
+    #     transformed_beacons_i = transformation @ rotation @ transformed_beacons_i + relative_pos
+    #     if 'p' in connections[pos_in_graph]:
+    #         pos_in_graph = connections[pos_in_graph]['p']
+    # return transformed_beacons_i
 
 
 def main():
@@ -72,31 +81,33 @@ def main():
     for i in range(len(beacons_array)):
         for j in range(i + 1, len(beacons_array)):
             if connected_to_0(i, connections) is not None and connected_to_0(j, connections) is not None:
-                continue
+                pass  # continue
             beacons1 = beacons_array[i]
             beacons2 = beacons_array[j]
             res = find_match(beacons2, beacons1, T, R)
             if res is not None:
                 n_match, matching_beacons, (transformation, rotation), candidate = res
                 relative_pos = (matching_beacons[1] - matching_beacons[0]).reshape((3, 1))
-                connect(i, j, connections, lambda b: transformation @ rotation @ b + relative_pos)
+                connect(i, j, connections, lambda t, r, rp, b: (t @ r @ b) + rp,
+                        (transformation, rotation, relative_pos))
                 connect(j, i, connections,
-                        lambda b: np.invert(rotation) @ np.invert(transformation) @ (b - relative_pos))
+                        lambda t, r, rp, b: np.invert(r) @ np.invert(t) @ (b - rp),
+                        (transformation, rotation, relative_pos))
                 print("Match : ", i, j)
 
     print(connected_to_0(2, connections))
-    # transformed_beacon_coords = [beacons_array[0]]
-    # for i in range(1, len(beacons_array)):
-    #     transformed_beacon_coords.append(transform_beacon_coords(i, beacons_array[i], connections))
-    #
-    # beacons = []
-    # for i in range(len(transformed_beacon_coords)):
-    #     beacons_i = transformed_beacon_coords[i]
-    #     for j in range(beacons_i.shape[1]):
-    #         if tuple(beacons_i[:, j]) not in beacons:
-    #             beacons.append(tuple(beacons_i[:, j]))
-    #     print(len(beacons))
-    # print(beacons)
+    transformed_beacon_coords = [beacons_array[0]]
+    for i in range(1, len(beacons_array)):
+        transformed_beacon_coords.append(transform_beacon_coords(i, beacons_array[i], connections))
+
+    beacons = []
+    for i in range(len(transformed_beacon_coords)):
+        beacons_i = transformed_beacon_coords[i]
+        for j in range(beacons_i.shape[1]):
+            if tuple(beacons_i[:, j]) not in beacons:
+                beacons.append(tuple(beacons_i[:, j]))
+        print(len(beacons))
+    print(beacons)
 
 
 def read_input():
