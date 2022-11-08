@@ -1,3 +1,5 @@
+import gc
+
 import numpy as np
 
 
@@ -26,8 +28,6 @@ def find_match(beacons1, beacons2, T, R):
                                (candidate[:, j_beacons1], beacons2[:, i_beacons2]), \
                                (transformation, rotation), \
                                candidate
-                    del candidate
-                    del candidate_with_offset
 
 
 def connected_to_0(j, connections):
@@ -51,7 +51,13 @@ def connected_to_0(j, connections):
                 prev[v] = u
     if 0 not in dist or dist[0] == np.inf:
         return None
-    return prev
+    s = []
+    u = 0
+    if u in prev or u == j:
+        while u is not None:
+            s.insert(0, u)
+            u = None if u not in prev else prev[u]
+    return s
 
 
 def connect(i, j, connections, transf, args):
@@ -63,32 +69,24 @@ def connect(i, j, connections, transf, args):
 
 def transform_beacon_coords(i, beacons_i, connections):
     path = connected_to_0(i, connections)
-    pos_in_graph = i
     transformed_beacons_i = beacons_i.copy()
-    while pos_in_graph != 0:
-        p = [v for v in path if path[v] == pos_in_graph][0]
+    for i_pos_in_graph in range(len(path) - 1):
+        pos_in_graph = path[i_pos_in_graph]
+        p = path[i_pos_in_graph+1]
         connection = [conn for conn in connections[pos_in_graph] if conn['p'] == p][0]
         transf, (t, r, rp) = connection['transf'], connection['args']
         transformed_beacons_i = transf(t, r, rp, transformed_beacons_i)
-        pos_in_graph = p
     return transformed_beacons_i
-
-    #     transformation, rotation, relative_pos = connections[pos_in_graph]['transf']
-    #     transformed_beacons_i = transformation @ rotation @ transformed_beacons_i + relative_pos
-    #     if 'p' in connections[pos_in_graph]:
-    #         pos_in_graph = connections[pos_in_graph]['p']
-    # return transformed_beacons_i
 
 
 def main():
     beacons_array = read_input()
     connections = find_scanners_relative_transformations(beacons_array)
 
-    print(connected_to_0(2, connections))
     transformed_beacon_coords = compute_beacons_coord_in_same_space(beacons_array, connections)
 
     beacons = compute_unique_beacon_coords(transformed_beacon_coords)
-    print(beacons)
+    print("There are :", len(beacons), "beacons.")
 
 
 def compute_unique_beacon_coords(transformed_beacon_coords):
@@ -98,7 +96,6 @@ def compute_unique_beacon_coords(transformed_beacon_coords):
         for j in range(beacons_i.shape[1]):
             if tuple(beacons_i[:, j]) not in beacons:
                 beacons.append(tuple(beacons_i[:, j]))
-        print(len(beacons))
     return beacons
 
 
@@ -114,7 +111,7 @@ def find_scanners_relative_transformations(beacons_array):
     for i in range(len(beacons_array)):
         for j in range(i + 1, len(beacons_array)):
             if connected_to_0(i, connections) is not None and connected_to_0(j, connections) is not None:
-                pass  # continue
+                continue
             beacons1 = beacons_array[i]
             beacons2 = beacons_array[j]
             res = find_match(beacons2, beacons1, T, R)
@@ -127,6 +124,7 @@ def find_scanners_relative_transformations(beacons_array):
                         lambda t, r, rp, b: (np.linalg.inv(r) @ np.linalg.inv(t) @ (b - rp)).astype(np.int64),
                         (transformation, rotation, relative_pos))
                 print("Match : ", i, j)
+        gc.collect()
     return connections
 
 
