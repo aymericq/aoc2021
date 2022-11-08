@@ -5,22 +5,27 @@ def find_match(beacons1, beacons2, T, R):
     thresh = 12
     for transformation in T:
         for rotation in R:
-            for i in range(beacons2.shape[1]):
-                beacon_offset = beacons2[:, i].reshape((3, 1))
-                for j in range(beacons1.shape[1]):
+            for i_beacons2 in range(beacons2.shape[1]):
+                beacon_offset = beacons2[:, i_beacons2].reshape((3, 1))
+                for j_beacons1 in range(beacons1.shape[1]):
                     n_match = 0
                     candidate = (transformation @ (rotation @ beacons1))
-                    offset = beacon_offset - candidate[:, j].reshape((3, 1))
+                    offset = beacon_offset - candidate[:, j_beacons1].reshape((3, 1))
                     candidate_with_offset = candidate + offset
                     for k in range(beacons2.shape[1]):
-                        if k == i:
+                        if k == i_beacons2:
                             n_match += 1
                         else:
-                            comp = np.sum(np.abs(candidate_with_offset - beacons2[:, k].reshape((3, 1))), axis=0) == 0
-                            if comp.any():
+                            comparison = np.sum(
+                                np.abs(candidate_with_offset - beacons2[:, k].reshape((3, 1))),
+                                axis=0) == 0
+                            if comparison.any():
                                 n_match += 1
                     if n_match >= thresh:
-                        return n_match, (candidate[:, j], beacons2[:, i]), (transformation, rotation), candidate
+                        return n_match, \
+                               (candidate[:, j_beacons1], beacons2[:, i_beacons2]), \
+                               (transformation, rotation), \
+                               candidate
                     del candidate
                     del candidate_with_offset
 
@@ -77,6 +82,34 @@ def transform_beacon_coords(i, beacons_i, connections):
 
 def main():
     beacons_array = read_input()
+    connections = find_scanners_relative_transformations(beacons_array)
+
+    print(connected_to_0(2, connections))
+    transformed_beacon_coords = compute_beacons_coord_in_same_space(beacons_array, connections)
+
+    beacons = compute_unique_beacon_coords(transformed_beacon_coords)
+    print(beacons)
+
+
+def compute_unique_beacon_coords(transformed_beacon_coords):
+    beacons = []
+    for i in range(len(transformed_beacon_coords)):
+        beacons_i = transformed_beacon_coords[i]
+        for j in range(beacons_i.shape[1]):
+            if tuple(beacons_i[:, j]) not in beacons:
+                beacons.append(tuple(beacons_i[:, j]))
+        print(len(beacons))
+    return beacons
+
+
+def compute_beacons_coord_in_same_space(beacons_array, connections):
+    transformed_beacon_coords = [beacons_array[0]]
+    for i in range(1, len(beacons_array)):
+        transformed_beacon_coords.append(transform_beacon_coords(i, beacons_array[i], connections))
+    return transformed_beacon_coords
+
+
+def find_scanners_relative_transformations(beacons_array):
     connections = {}
     for i in range(len(beacons_array)):
         for j in range(i + 1, len(beacons_array)):
@@ -91,23 +124,10 @@ def main():
                 connect(i, j, connections, lambda t, r, rp, b: (t @ r @ b) + rp,
                         (transformation, rotation, relative_pos))
                 connect(j, i, connections,
-                        lambda t, r, rp, b: np.invert(r) @ np.invert(t) @ (b - rp),
+                        lambda t, r, rp, b: (np.linalg.inv(r) @ np.linalg.inv(t) @ (b - rp)).astype(np.int64),
                         (transformation, rotation, relative_pos))
                 print("Match : ", i, j)
-
-    print(connected_to_0(2, connections))
-    transformed_beacon_coords = [beacons_array[0]]
-    for i in range(1, len(beacons_array)):
-        transformed_beacon_coords.append(transform_beacon_coords(i, beacons_array[i], connections))
-
-    beacons = []
-    for i in range(len(transformed_beacon_coords)):
-        beacons_i = transformed_beacon_coords[i]
-        for j in range(beacons_i.shape[1]):
-            if tuple(beacons_i[:, j]) not in beacons:
-                beacons.append(tuple(beacons_i[:, j]))
-        print(len(beacons))
-    print(beacons)
+    return connections
 
 
 def read_input():
@@ -182,16 +202,6 @@ Ry2 = np.array([
 ])
 R = [Rr1, Rr2, Rr3, Rr4]
 T = [Rx1, Rx2, Rx3, Rx4, Ry1, Ry2]
-
-
-def rotate(scanner):
-    rotated_scanner = []
-    for i in range(len(scanner)):
-        rotated_scanner.append([scanner[i][0], scanner[i][1], scanner[i][2]])
-        rotated_scanner.append([scanner[i][0], scanner[i][2], -scanner[i][1]])
-        rotated_scanner.append([scanner[i][0], -scanner[i][1], -scanner[i][2]])
-        rotated_scanner.append([scanner[i][0], -scanner[i][2], scanner[i][1]])
-
 
 if __name__ == "__main__":
     main()
