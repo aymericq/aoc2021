@@ -30,14 +30,14 @@ def find_match(beacons1, beacons2, T, R):
                                candidate
 
 
-def connected_to_0(j, connections):
+def find_path_to_target(source, target, connections):
     # Dijkstra from Wikipedia
     dist = {}
     prev = {}
     for vertex in connections:
         dist[vertex] = np.inf
         prev[vertex] = None
-    dist[j] = 0
+    dist[source] = 0
 
     q = set(connections.keys())
     while len(q) != 0:
@@ -49,11 +49,11 @@ def connected_to_0(j, connections):
             if alt < dist[v]:
                 dist[v] = alt
                 prev[v] = u
-    if 0 not in dist or dist[0] == np.inf:
+    if target not in dist or dist[target] == np.inf:
         return None
     s = []
-    u = 0
-    if u in prev or u == j:
+    u = target
+    if u in prev or u == source:
         while u is not None:
             s.insert(0, u)
             u = None if u not in prev else prev[u]
@@ -68,7 +68,7 @@ def connect(i, j, connections, transf, args):
 
 
 def transform_beacon_coords(i, beacons_i, connections):
-    path = connected_to_0(i, connections)
+    path = find_path_to_target(i, 0, connections)
     transformed_beacons_i = beacons_i.copy()
     for i_pos_in_graph in range(len(path) - 1):
         pos_in_graph = path[i_pos_in_graph]
@@ -86,7 +86,23 @@ def main():
     transformed_beacon_coords = compute_beacons_coord_in_same_space(beacons_array, connections)
 
     beacons = compute_unique_beacon_coords(transformed_beacon_coords)
-    print("There are :", len(beacons), "beacons.")
+    print("There are", len(beacons), "beacons.")
+
+    max_manhattan_distance = find_farthest_scanners(connections, len(beacons_array))
+    print("The fursthest 2 scanners are", max_manhattan_distance, "units apart.")
+
+
+def find_farthest_scanners(connections, n_scanner):
+    transformed_scanner_coords = [np.array([[0], [0], [0]])]
+    for i in range(1, n_scanner):
+        transformed_scanner_coords.append(transform_beacon_coords(i, np.zeros((3, 1)), connections))
+    max_dist = 0
+    for i in range(len(transformed_scanner_coords)):
+        for j in range(i+1, len(transformed_scanner_coords)):
+            dist = np.sum(np.abs(transformed_scanner_coords[i] - transformed_scanner_coords[j]))
+            if dist > max_dist:
+                max_dist = dist
+    return max_dist
 
 
 def compute_unique_beacon_coords(transformed_beacon_coords):
@@ -110,7 +126,7 @@ def find_scanners_relative_transformations(beacons_array):
     connections = {}
     for i in range(len(beacons_array)):
         for j in range(i + 1, len(beacons_array)):
-            if connected_to_0(i, connections) is not None and connected_to_0(j, connections) is not None:
+            if find_path_to_target(i, 0, connections) is not None and find_path_to_target(j, 0, connections) is not None:
                 continue
             beacons1 = beacons_array[i]
             beacons2 = beacons_array[j]
@@ -129,7 +145,7 @@ def find_scanners_relative_transformations(beacons_array):
 
 
 def read_input():
-    with open('test_input', 'r') as fd:
+    with open('test_input2', 'r') as fd:
         lines = [line.strip() for line in fd.readlines()]
         beacons = []
         beacon_arrays = []
