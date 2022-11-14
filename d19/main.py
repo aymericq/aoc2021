@@ -3,6 +3,19 @@ import gc
 import numpy as np
 
 
+def main():
+    beacons_array = read_input()
+    connections = find_scanners_relative_transformations(beacons_array)
+
+    transformed_beacon_coords = compute_beacons_coord_in_same_space(beacons_array, connections)
+
+    beacons = compute_unique_beacon_coords(transformed_beacon_coords)
+    print("There are", len(beacons), "beacons.")
+
+    max_manhattan_distance = find_farthest_scanners(connections, len(beacons_array))
+    print("The fursthest 2 scanners are", max_manhattan_distance, "units apart.")
+
+
 def find_match(beacons1, beacons2, T, R):
     thresh = 12
     for transformation in T:
@@ -79,19 +92,6 @@ def transform_beacon_coords(i, beacons_i, connections):
     return transformed_beacons_i
 
 
-def main():
-    beacons_array = read_input()
-    connections = find_scanners_relative_transformations(beacons_array)
-
-    transformed_beacon_coords = compute_beacons_coord_in_same_space(beacons_array, connections)
-
-    beacons = compute_unique_beacon_coords(transformed_beacon_coords)
-    print("There are", len(beacons), "beacons.")
-
-    max_manhattan_distance = find_farthest_scanners(connections, len(beacons_array))
-    print("The fursthest 2 scanners are", max_manhattan_distance, "units apart.")
-
-
 def find_farthest_scanners(connections, n_scanner):
     transformed_scanner_coords = [np.array([[0], [0], [0]])]
     for i in range(1, n_scanner):
@@ -145,7 +145,7 @@ def find_scanners_relative_transformations(beacons_array):
 
 
 def read_input():
-    with open('test_input2', 'r') as fd:
+    with open('input', 'r') as fd:
         lines = [line.strip() for line in fd.readlines()]
         beacons = []
         beacon_arrays = []
