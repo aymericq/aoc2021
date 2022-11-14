@@ -1,128 +1,208 @@
-import json
-from typing import List, Union
-
-
-class SnailNumber:
-    def __init__(self, val):
-        self.val = val
-
-    def __str__(self):
-        if isinstance(self.val, int):
-            return str(self.val)
-        else:
-            return "["+",".join([str(subval) for subval in self.val]) + "]"
-
-
-def replace_with_snail_number(number: Union[int, List]) -> SnailNumber:
-    if isinstance(number, int):
-        return SnailNumber(number)
-    else:
-        sub_numbers = []
-        for subnumber in number:
-            sub_numbers.append(replace_with_snail_number(subnumber))
-        return SnailNumber(sub_numbers)
-
-
-def parse_input(lines: List[str]) -> List[SnailNumber]:
-    numbers = []
-    for line in lines:
-        numbers.append(json.loads(line.strip()))
-    s_numbers = []
-    for line in numbers:
-        s_numbers.append(replace_with_snail_number(line))
-    return s_numbers
-
-
-def explode(number: SnailNumber, depth=0, left_num=None, right_num=None) -> SnailNumber:
-    if depth == 0:
-        for i_sub, sub_number in enumerate(number.val):
-            result = explode(sub_number, depth=1)
-            if result is not None:
-                number.val[i_sub].val = result.val
-                return number
-        return None
-    else:
-        if depth == 3:
-            if isinstance(number.val, int):
-                return None
-            else:
-                first_number_is_int = isinstance(number.val[0].val, int)
-                if first_number_is_int:
-                    l_num = number.val[0].val + number.val[1].val[0].val
-                    r_num = number.val[1].val[1].val + right_num.val if right_num is not None else 0
-                    new_number = [SnailNumber(l_num), SnailNumber(r_num)]
-                else:
-                    l_num = left_num.val + number.val[0].val[0].val if left_num is not None else 0
-                    r_num = number.val[0].val[1].val + number.val[1].val
-                    new_number = [SnailNumber(l_num), SnailNumber(r_num)]
-                # print("new number is", new_number)
-                return SnailNumber(new_number)
-        else:
-            number_is_list = isinstance(number.val, List)
-            if number_is_list:
-                for i_sub, sub_number in enumerate(number.val):
-                    result = explode(sub_number, depth=depth + 1)
-                    if result is not None:
-                        number.val[i_sub].val = result.val
-                        return number
-            else:
-                return None
-
-
-"""
-def explode(number: SnailNumber, depth=0) -> SnailNumber:
-    print("Exploding number", number)
-    if depth == 3:
-        print("At depth 3:", number)
-        if isinstance(number, List):
-            if isinstance(number[0], int):
-                if isinstance(number[1], int):
-                    return False, []
-                else:
-                    new_number = [number[0] + number[1][0], 0]
-                    print("new_number", new_number)
-                    return True, new_number
-            else:
-                new_number = [0, number[0][1] + number[1]]
-                print("new_number", new_number)
-                return True, new_number
-        else:
-            return False, []
-    elif isinstance(number, List):
-        for i_sub, subnumber in enumerate(number):
-            has_exploded, new_number = explode(subnumber, depth + 1)
-            if has_exploded:
-                number[i_sub] = new_number
-                if depth == 0:
-                    return number
-                else:
-                    return True, number
-    else:
-        return False, number
-"""
-
-
-def reduce_s_number(number: SnailNumber) -> SnailNumber:
-    if can_be_exploded:
-        number = explode(number)
-        number = reduce_s_number(number)
-    if can_be_split:
-        number = split(number)
-        number = reduce_s_number(number)
-    return number
-
-
-def add_s_numbers(number_a: SnailNumber, number_b: SnailNumber) -> SnailNumber:
-    number_before_reduction = number_a + number_b
-    return reduce_s_number(number_before_reduction)
-
-
 def main():
     with open("test_input", 'r') as fd:
-        lines = parse_input(fd.readlines())
-        print(str(lines))
-        s = explode(lines[0])
-        print("after explosion:", str(s))
+        lines = [line.strip() for line in fd.readlines()]
+    dm = arr2depthmap(eval(lines[0]))
+    for i in range(1, len(lines)):
+        dm1 = arr2depthmap(eval(lines[i]))
+        dm = add(dm, dm1)
+    t = depthmap2btree(dm)
+    m = magnitude(t)
+    print("Magnitude:", m)
+    magnitudes = compute_max_magnitude_between_two_numbers(lines)
+    print("Max :", max(magnitudes))
+
+
+def compute_max_magnitude_between_two_numbers(lines):
+    magnitudes = []
+    for i in range(len(lines)):
+        for j in range(len(lines)):
+            if i != j:
+                dm1 = arr2depthmap(eval(lines[i]))
+                dm2 = arr2depthmap(eval(lines[j]))
+                dm = add(dm1, dm2)
+                magnitudes.append(magnitude(depthmap2btree(dm)))
+    return magnitudes
+
+
+def magnitude(t):
+    if t['val'] is not None:
+        return t['val']
+    return 3*magnitude(t['l']) + 2*magnitude(t['r'])
+
+
+def arr2depthmap(a):
+    if isinstance(a, int):
+        return {'val': a, 'd': 0}
+    l = []
+    for i in range(len(a)):
+        dm = arr2depthmap(a[i])
+        if isinstance(dm, dict):
+            dm['d'] += 1
+            l.append(dm)
+        else:
+            for e in dm:
+                e['d'] += 1
+            l.extend(dm)
+    return l
+
+
+def find_first_regular_pair(dm):
+    i = 0
+    while i < len(dm) - 1:
+        if dm[i]['d'] == dm[i + 1]['d']:
+            return i
+        i += 1
+    return None
+
+
+def find_end_of_snail_number_after_position(dm, i):
+    j = i + 1
+    while j < len(dm) - 1:
+        if dm[j]['d'] <= dm[j + 1]['d']:
+            return j
+        j += 1
+    return None
+
+
+def build_tree(max_depth):
+    if max_depth == 0:
+        return {'val': None, 'children_full': False}
+    t = {'l': build_tree(max_depth - 1), 'r': build_tree(max_depth - 1), 'val': None, 'children_full': False}
+    if max_depth >= 1:
+        t['l']['p'] = t
+        t['r']['p'] = t
+    return t
+
+
+def notify_parent(node):
+    if 'p' in node and node['p'] is not None \
+            and node['p']['l']['children_full'] and node['p']['r']['children_full']:
+        node['p']['children_full'] = True
+        notify_parent(node['p'])
+
+
+def find_next_free_node_at_depth_d(t, d):
+    if t['children_full']:
+        return None
+    if d == 0:
+        if t['val'] is None and not t['children_full']:
+            return t
+        else:
+            return None
+    else:
+        node = find_next_free_node_at_depth_d(t['l'], d - 1)
+        if node is None:
+            node = find_next_free_node_at_depth_d(t['r'], d - 1)
+            if node is None:
+                return None
+            else:
+                return node
+        else:
+            return node
+
+
+def depthmap2btree(dm):
+    max_depth = max([e['d'] for e in dm])
+    t = build_tree(max_depth)
+    for i in range(len(dm)):
+        d = dm[i]['d']
+        node = find_next_free_node_at_depth_d(t, d)
+        node['val'] = dm[i]['val']
+        node['children_full'] = True
+        notify_parent(node)
+    return t
+
+
+def print_tree(t, d=0):
+    print(" " * 2 * d + "-- val:", t['val'], ", cf:", t['children_full'], ", d:", d)
+    if 'l' in t and t['l'] is not None:
+        print_tree(t['l'], d + 1)
+    if 'r' in t and t['r'] is not None:
+        print_tree(t['r'], d + 1)
+
+
+def split(dm):
+    copy = dm.copy()
+    i = 0
+    while i < len(dm):
+        val = copy[i]['val']
+        if val >= 10:
+            copy[i]['val'] = val // 2
+            copy[i]['d'] += 1
+            copy.insert(i + 1, {'val': val - (val // 2), 'd': copy[i]['d']})
+            return copy, True
+        i += 1
+    return copy, False
+
+
+def explode(s):
+    i_max = 0
+    max_d = s[0]['d']
+    for i, e in enumerate(s):
+        if e['d'] > max_d:
+            max_d = e['d']
+            i_max = i
+
+    i = i_max
+    e = s[i]
+    if e['d'] > 4:
+        if i == 0:
+            e['val'] = 0
+            e['d'] -= 1
+            s[i + 2]['val'] = s[i + 1]['val'] + s[i + 2]['val']
+            del s[i + 1]
+            return True
+        elif i == len(s) - 2:
+            s[i + 1]['val'] = 0
+            s[i + 1]['d'] -= 1
+            s[i - 1]['val'] = s[i - 1]['val'] + s[i]['val']
+            del s[i]
+            return True
+        else:
+            s[i - 1]['val'] = s[i - 1]['val'] + e['val']
+            if i + 2 < len(s):
+                s[i + 2]['val'] = s[i + 1]['val'] + s[i + 2]['val']
+            s[i]['d'] -= 1
+            s[i]['val'] = 0
+            del s[i + 1]
+            return True
+    return False
+
+
+def add(dm1, dm2) -> list:
+    dm = dm1 + dm2
+    for e in dm:
+        e['d'] += 1
+    dm = reduce(dm)
+    return dm
+
+
+def reduce(dm):
+    has_exploded, has_split = True, True
+    while has_exploded or has_split:
+        has_exploded = explode(dm)
+        if has_exploded:
+            continue
+        dm, has_split = split(dm)
+    return dm
+
+
+def pretty_print_t(t):
+    s = ""
+    if not 'l' in t:
+        return str(t['val'])
+    if t['l'] is not None:
+        if t['l']['val'] is not None:
+            s += "[" + str(t['l']['val'])
+        else:
+            s += "[" + pretty_print_t(t['l'])
+    if t['r'] is not None:
+        if t['r']['val'] is not None:
+            s += ", " + str(t['r']['val'])
+        else:
+            s += ", " + str(pretty_print_t(t['r']))
+    s += "]"
+    return s
 
 
 if __name__ == "__main__":
